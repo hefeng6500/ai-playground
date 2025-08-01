@@ -482,6 +482,11 @@ htmlcov/
 *.bz2
 *.xz
 
+.txt
+logs
+models
+
 # Add specific exceptions for small essential images/docs if needed
 # !logo.png
 # !README.pdf
+# !transformer/translation-transformer/data/raw/cmn.txt
