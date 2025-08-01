@@ -312,7 +312,7 @@ dist
 *.npy
 
 # Large data directories
-data/
+# data/
 datasets/
 raw_data/
 processed_data/
