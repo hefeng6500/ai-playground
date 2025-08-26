@@ -343,10 +343,6 @@ mlruns/
 .ipynb_checkpoints/
 */.ipynb_checkpoints/*
 
-# VS Code
-.vscode/
-*.code-workspace
-
 # Sublime Text
 *.sublime-project
 *.sublime-workspace
