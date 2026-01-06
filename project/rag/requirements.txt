@@ -1,9 +1,0 @@
-langchain==1.0.7
-langchain-core
-langchain-community
-langchain-openai
-langchain-text-splitters
-faiss-cpu
-pypdf
-unstructured
-beautifulsoup4
