@@ -55,7 +55,7 @@ print(f"\n正规方程解: θ0 = {theta_normal[0][0]:.4f},  θ1 = {theta_normal[
 # ============================================================
 # 5. 可视化
 # ============================================================
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial']
+plt.rcParams['font.sans-serif'] = ['PingFang HK', 'SimHei', 'Microsoft YaHei', 'Arial']
 plt.rcParams['axes.unicode_minus'] = False
 
 fig, axes = plt.subplots(1, 3, figsize=(18, 5))
