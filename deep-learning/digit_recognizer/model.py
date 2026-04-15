@@ -1,28 +1,50 @@
 """
-model.py — 两层神经网络模型
-------------------------------
-将网络结构与前向传播逻辑封装为一个清晰的类。
+model.py — 两层神经网络模型（含完整反向传播）
+-----------------------------------------------
+将网络结构、前向传播与反向传播封装为一个清晰的类。
 
-设计说明
+网络结构
 --------
-- forward()   : 前向传播（已实现）
-- loss()      : 计算损失（已实现）
-- accuracy()  : 计算准确率（已实现）
-- gradient()  : 梯度计算接口（当前使用数值梯度；后续实现反向传播后
-                只需替换内部实现，接口保持不变）
+  输入层  →  隐藏层（Sigmoid）  →  输出层（Softmax）
+  (784)       (hidden_size)          (10)
 
-激活函数说明
-------------
-- 隐藏层：Sigmoid（当前）；后续可替换为 ReLU
-- 输出层：Softmax（多分类标准选择）
+已实现方法
+----------
+- forward()              : 前向传播，返回预测概率
+- loss()                 : 计算交叉熵损失
+- accuracy()             : 计算分类准确率
+- gradient()             : 统一梯度接口，支持 'numerical' / 'backprop'
+- _backprop_gradient()   : 解析梯度（反向传播，已实现）
+- _numerical_gradient()  : 数值梯度（中心差分，用于验证）
 
-损失函数说明
-------------
-- 交叉熵损失（Cross Entropy Error）— 多分类标准损失
+反向传播推导（关键公式）
+--------------------------
+前向传播：
+  a1 = X @ W1 + b1              (n, hidden)
+  z1 = sigmoid(a1)              (n, hidden)
+  a2 = z1 @ W2 + b2             (n, output)
+  y  = softmax(a2)              (n, output)
+  L  = cross_entropy(y, t)      scalar
+
+反向传播（链式法则，从输出层向输入层逐层求偏导）：
+
+  第二层（Softmax + Cross-Entropy 联合梯度，推导极简洁）：
+    ∂L/∂a2 = (y - t_onehot) / n            (n, output)
+
+    ∂L/∂W2 = z1^T  @  ∂L/∂a2             (hidden, output)
+    ∂L/∂b2 = Σ_行 ∂L/∂a2                 (output,)
+    ∂L/∂z1 = ∂L/∂a2  @  W2^T             (n, hidden)
+
+  第一层（Sigmoid 导数传播）：
+    ∂L/∂a1 = ∂L/∂z1  ×  sigmoid'(z1)     (n, hidden)
+           = ∂L/∂z1  ×  z1 × (1 − z1)   （逐元素乘）
+
+    ∂L/∂W1 = X^T  @  ∂L/∂a1             (input, hidden)
+    ∂L/∂b1 = Σ_行 ∂L/∂a1                 (hidden,)
 """
 
 import numpy as np
-from functions import sigmoid, softmax, cross_entropy_error
+from functions import sigmoid, sigmoid_grad, relu, relu_grad, softmax, cross_entropy_error
 from config import MODEL_CONFIG
 
 
@@ -150,12 +172,63 @@ class TwoLayerNet:
 
     def _backprop_gradient(self, X: np.ndarray, t: np.ndarray) -> dict:
         """
-        反向传播梯度（解析梯度）。
+        反向传播梯度（解析梯度，Backpropagation）。
 
-        TODO: 待学习反向传播后实现。
-              实现后将比数值梯度快数倍，训练速度大幅提升。
+        原理
+        ----
+        利用链式法则，从输出层向输入层逐层计算每个参数对损失的偏导数。
+        比数值梯度快约 hidden_size 倍，是实际训练神经网络的标准做法。
+
+        关键技巧：Softmax + Cross-Entropy 的联合梯度
+        -----------------------------------------------
+        单独推导 softmax 的 Jacobian 矩阵比较复杂（每个输出都依赖所有输入）。
+        但当 softmax 与交叉熵组合使用时，联合梯度化简为极简洁的形式：
+
+            ∂L/∂a2[i, j] = y[i, j] - 1_{j == t[i]}
+
+        除以批量大小 n 后得到平均梯度，与损失函数的"平均"一致。
+        直觉：模型对正确类别预测概率高时，梯度接近 0；预测错误时，梯度大。
+
+        参数
+        ----
+        X : shape (n, input_size)  — 输入特征（当前 batch）
+        t : shape (n,)             — 真实整数标签
+
+        返回
+        ----
+        grads : dict，键 = {'W1', 'b1', 'W2', 'b2'}，值 = 对应梯度 ndarray
         """
-        raise NotImplementedError(
-            "反向传播尚未实现，请学习反向传播后完善此方法。\n"
-            "当前请使用 method='numerical'（数值梯度）。"
-        )
+        n = X.shape[0]
+        W1, b1 = self.params['W1'], self.params['b1']
+        W2, b2 = self.params['W2'], self.params['b2']
+
+        # ── ① 前向传播（缓存中间值，反向传播需要用到）──────────── #
+        a1 = X @ W1 + b1          # 第一层线性变换    (n, hidden)
+        z1 = sigmoid(a1)          # 第一层 Sigmoid 激活 (n, hidden)
+        a2 = z1 @ W2 + b2         # 第二层线性变换    (n, output)
+        y  = softmax(a2)          # 第二层 Softmax 输出 (n, output)
+
+        # ── ② 输出层反向：Softmax + Cross-Entropy 联合梯度 ───────── #
+        # 构造 one-hot 矩阵：将整数标签 t 转为概率矩阵格式
+        dy = y.copy()             # shape (n, output)
+        dy[np.arange(n), t] -= 1  # 正确类别位置减 1（对应公式 y - 1_{j==t[i]}）
+        dy /= n                   # 除以 n 得到平均梯度（对应损失函数中的 /n）
+
+        # W2、b2 的梯度：z1 是 a2 的"输入"
+        dW2 = z1.T @ dy           # (hidden, n) @ (n, output) → (hidden, output)
+        db2 = np.sum(dy, axis=0)  # 对 n 个样本求和           → (output,)
+
+        # ── ③ 将梯度传回隐藏层 ────────────────────────────────────── #
+        # dy @ W2.T：将输出层梯度"反向流过"第二层权重矩阵
+        dz1 = dy @ W2.T           # (n, output) @ (output, hidden) → (n, hidden)
+
+        # ── ④ 隐藏层反向：Sigmoid 导数 ───────────────────────────── #
+        # sigmoid'(a1) = z1 * (1 - z1)（直接用已算好的 z1，避免重复计算）
+        da1 = dz1 * sigmoid_grad(z1)  # 逐元素乘    (n, hidden)
+
+        # W1、b1 的梯度：X 是 a1 的"输入"
+        dW1 = X.T @ da1           # (input, n) @ (n, hidden) → (input, hidden)
+        db1 = np.sum(da1, axis=0) # 对 n 个样本求和           → (hidden,)
+
+        # ── ⑤ 整理并返回梯度字典 ─────────────────────────────────── #
+        return {'W1': dW1, 'b1': db1, 'W2': dW2, 'b2': db2}
