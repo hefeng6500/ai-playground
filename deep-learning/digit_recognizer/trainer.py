@@ -72,6 +72,7 @@ class Trainer:
         self.print_loss_every = print_loss_every
 
         # 计算训练迭代总次数
+        # 如果不理解，查看 gemini 的解释： https://gemini.google.com/share/10e61eab5a3b
         n = x_train.shape[0]
         self.iters_per_epoch = int(np.ceil(n / batch_size))
         self.total_iters     = self.iters_per_epoch * num_epochs
@@ -91,8 +92,8 @@ class Trainer:
         for iteration in range(self.total_iters):
             # ① Mini-batch 随机采样
             batch_idx  = np.random.choice(n, self.batch_size)
-            x_batch    = self.x_train[batch_idx]
-            t_batch    = self.y_train[batch_idx]
+            x_batch    = self.x_train[batch_idx] # 从训练集中取特征
+            t_batch    = self.y_train[batch_idx] # 从训练集中取对应的标签
 
             # ② 计算梯度
             grads = self.model.gradient(x_batch, t_batch, method=self.grad_method)
