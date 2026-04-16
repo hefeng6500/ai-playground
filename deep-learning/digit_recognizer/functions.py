@@ -131,6 +131,9 @@ def cross_entropy_error(y: np.ndarray, t: np.ndarray) -> float:
     ----
     scalar — 平均交叉熵损失（除以样本数 n）
     """
+
+
+    # 本段代码解释：https://gemini.google.com/share/b79303ee399f
     if y.ndim == 1:
         t = t.reshape(1, -1)
         y = y.reshape(1, -1)

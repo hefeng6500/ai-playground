@@ -506,6 +506,13 @@ for key in num_grads:
 | 数值梯度验证 | `gradient.py` | `(f(x+h) - f(x-h)) / (2*h)` |
 
 
+## 加入组织一起交流 AI 技术
+
+<div align="center" style="display: flex; align-items: flex-end; gap: 20px;">
+  <img src="./book/public/images/my_wechat.jpg" alt="我的微信" width="300" style="object-fit: contain;"/>
+  <img src="./book/public/images/wechat_group.jpg" alt="微信群二维码" width="300" style="object-fit: contain;" />
+</div>
+
 ---
 
 还缺什么（进阶基础）                                      
@@ -526,3 +533,8 @@ for key in num_grads:
                                                                                                                                                                       
   4. 多层扩展                                               
   目前是固定的两层，封装成可变层数（比如 [784, 100, 50, 10]）会更通用 
+
+## 友情链接
+
+[Linux.do(一个硬核且高质量的社区)](https://linux.do/)
+  
